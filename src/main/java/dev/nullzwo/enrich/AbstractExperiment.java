@@ -62,6 +62,8 @@ public abstract class AbstractExperiment {
 			return;
 		}
 
+		System.out.println(topology.describe());
+
 		var config = new Properties();
 		config.putAll(Map.of(
 				StreamsConfig.APPLICATION_ID_CONFIG, "java-streams",
