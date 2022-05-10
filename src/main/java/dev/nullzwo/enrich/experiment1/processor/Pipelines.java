@@ -43,28 +43,28 @@ public class Pipelines {
 		);
 	}
 
-	static <S> Pipeline<VehicleId, VehicleEvent> createEvents(EventProcessor<S> processor, Pipeline<VehicleId, VehicleEvent> vehicles) {
+	static <S> Pipeline<VehicleId, VehicleEvent> createEvents(EventProcessor<S, VehicleEvent> processor, Pipeline<VehicleId, VehicleEvent> vehicles) {
 		return switch (processor) {
-			case StatefullEventProcessor<S> p -> vehicles.<VehicleId, S, VehicleId, VehicleEvent>transform((store, key, value) -> {
+			case StatefullEventProcessor<S, VehicleEvent> p -> vehicles.<VehicleId, S, VehicleId, VehicleEvent>transform((store, key, value) -> {
 				var current = store.get(key);
-				var result = p.processing().process(current, value);
+				var result = p.process(current, value);
 				store.set(key, result.state());
 				return result.events().stream().map(e -> new Entry<>(key, e)).collect(toList());
 			}, null, null);
-			case StatelessEventProcessor p -> vehicles.flatMap(p::process);
+			case StatelessEventProcessor<S, VehicleEvent> p -> vehicles.flatMap(p::process);
 			default -> throw new IllegalStateException();
 		};
 	}
 
-	static <S> Pipeline<VehicleId, S> createState(EventProcessor<S> processor, Pipeline<VehicleId, VehicleEvent> vehicles) {
+	static <S> Pipeline<VehicleId, S> createState(EventProcessor<S, VehicleEvent> processor, Pipeline<VehicleId, VehicleEvent> vehicles) {
 		return switch (processor) {
-			case StatefullEventProcessor<S> p -> vehicles.<VehicleId, S, VehicleId, S>transform((store, key, value) -> {
+			case StatefullEventProcessor<S, VehicleEvent> p -> vehicles.<VehicleId, S, VehicleId, S>transform((store, key, value) -> {
 				var current = store.get(key);
-				var result = p.processing().process(current, value);
+				var result = p.process(current, value);
 				store.set(key, result.state());
 				return List.of(new Entry<>(key, result.state()));
 			}, null, null);
-			case StatelessEventProcessor p -> throw new IllegalArgumentException();
+			case StatelessEventProcessor<S, VehicleEvent> p -> throw new IllegalArgumentException();
 			default -> throw new IllegalStateException();
 		};
 	}

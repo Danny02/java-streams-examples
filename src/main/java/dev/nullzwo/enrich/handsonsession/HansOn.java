@@ -14,31 +14,13 @@ public class HansOn extends AbstractExperiment {
 	interface VehicleEvent {
 	}
 
-	public static class DealerChanged implements VehicleEvent {
-		public final String dealerId;
-
-		public DealerChanged(String dealerId) {
-			this.dealerId = dealerId;
-		}
-
-		public String getDealerId() {
-			return dealerId;
-		}
+	public record DealerChanged(String dealerId) implements VehicleEvent {
 	}
 
-	public static class PriceReset implements VehicleEvent {
+	public record PriceReset() implements VehicleEvent {
 	}
 
-	public static class PriceChanged implements VehicleEvent {
-		public final long newPrice;
-
-		public PriceChanged(long newPrice) {
-			this.newPrice = newPrice;
-		}
-
-		public long getNewPrice() {
-			return newPrice;
-		}
+	public record PriceChanged(long newPrice) implements VehicleEvent {
 	}
 
 	@Override
@@ -63,8 +45,8 @@ public class HansOn extends AbstractExperiment {
 
 		builder.<String, VehicleEvent>stream(VEHICLES_TOPIC)
 				.groupByKey()
-				.aggregate(() -> 0L, (key, event, currentPrice) -> switch (event) {
-					case PriceChanged pc -> pc.getNewPrice();
+				.aggregate(() -> 0L, (vin, event, currentPrice) -> switch (event) {
+					case PriceChanged pc -> pc.newPrice;
 					case PriceReset pr -> 0L;
 					default -> currentPrice;
 				}).toStream().to("price-readmodel");
