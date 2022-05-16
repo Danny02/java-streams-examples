@@ -5,7 +5,9 @@ import dev.nullzwo.enrich.experiment1.Domain.BaseDateChanged;
 import dev.nullzwo.enrich.experiment1.Domain.DealerChanged;
 import dev.nullzwo.enrich.experiment1.Domain.DealerId;
 import dev.nullzwo.enrich.experiment1.Domain.PriceChanged;
+import dev.nullzwo.enrich.experiment1.processor.graph.Graph;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -68,17 +70,10 @@ public class ProcessorsTest {
 		for (String processor : eventMapping.keySet()) {
 			System.out.println(processor + ":");
 			Map<String, Set<String>> pmappings = eventMapping.get(processor);
-			for (String incoming : pmappings.keySet()) {
-				Set<String> outcomes = pmappings.get(incoming);
-				for (String outgoing : outcomes) {
-					System.out.println("\t" + incoming + " -> " + outgoing);
-				}
-
-				if(outcomes.isEmpty()) {
-					System.out.println("\t" + incoming + " -> ...");
-				}
-			}
+			Graph eventGraph = new Graph(pmappings);
+			Assertions.assertFalse(eventGraph.containsALoop());
 		}
+
 	}
 
 	static Map<String, Map<String, Set<String>>> eventMapping = new HashMap<>();
