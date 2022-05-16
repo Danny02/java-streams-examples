@@ -71,9 +71,8 @@ public class ProcessorsTest {
 			System.out.println(processor + ":");
 			Map<String, Set<String>> pmappings = eventMapping.get(processor);
 			Graph eventGraph = new Graph(pmappings);
-			Assertions.assertFalse(eventGraph.containsALoop());
+			assertThat(eventGraph.containsALoop()).isFalse();
 		}
-
 	}
 
 	static Map<String, Map<String, Set<String>>> eventMapping = new HashMap<>();
