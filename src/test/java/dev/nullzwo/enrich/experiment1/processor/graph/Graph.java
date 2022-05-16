@@ -56,28 +56,4 @@ public class Graph {
     stack[position] = false;
     return false;
   }
-
-  public static void main(String[] args) {
-    /*
-    a -> b
-    c -> d
-    d -> c
-    d -> g
-     */
-    Map<String, Set<String>> mapping = new HashMap<>();
-    mapping.put("a", Set.of("b"));
-    mapping.put("c", Set.of("d"));
-    mapping.put("d", Set.of("c", "g"));
-
-    Graph graph = new Graph(mapping);
-    System.out.println(graph.containsALoop());
-
-    mapping = new HashMap<>();
-    mapping.put("a", Set.of("b"));
-    mapping.put("c", Set.of("d"));
-    mapping.put("d", Set.of("g"));
-
-    graph = new Graph(mapping);
-    System.out.println(graph.containsALoop());
-  }
 }
