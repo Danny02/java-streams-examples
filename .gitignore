@@ -1,3 +1,4 @@
-target/
-.idea/
 .jqwik-database
+.idea/
+target/
+*.iml

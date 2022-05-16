@@ -1,33 +1,38 @@
 package dev.nullzwo.enrich.experiment1.processor;
 
+import dev.nullzwo.enrich.experiment1.processor.FixGraph.Algebra;
 import net.jqwik.api.*;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 
+import static dev.nullzwo.enrich.experiment1.processor.AttrGraph.attribute;
+import static dev.nullzwo.enrich.experiment1.processor.FixGraph.cata;
 import static java.util.function.Function.identity;
 import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ProcessorGraphTest {
 
-	abstract GraphChecker checker();
+	public abstract GraphChecker checker();
 
 	@Test
 	void emptyGraphIsAcyclic() {
 		var graph = new FixGraph(new EventGraph(new EventInfo("event"), List.of()));
-		assertThat(graph).matches(checker()::isAcyclicGraph);
+		assertThat(graph).matches(checker()::isAcyclicGraph, "is acyclic");
 	}
 
 	@Property
 	void detectCyclicGraph(@ForAll("cyclic") FixGraph graph) {
-		assertThat(graph).matches(not(checker()::isAcyclicGraph));
+		assertThat(graph).matches(not(checker()::isAcyclicGraph), "is cyclic");
 	}
 
 	@Property
 	void detectAcyclicGraph(@ForAll("acyclic") FixGraph graph) {
-		assertThat(graph).matches(checker()::isAcyclicGraph);
+		assertThat(graph).matches(checker()::isAcyclicGraph, "is acyclic");
 	}
 
 	Arbitrary<EventInfo> arbEventInfo() {
@@ -40,30 +45,74 @@ public abstract class ProcessorGraphTest {
 
 	@Provide
 	Arbitrary<FixGraph> cyclic() {
-		return arbEventInfo().list().ofMinSize(1).flatMap(pool -> cata(new Pool(pool), this::createAcyclic)).map(g -> {
-			return replaceLeaf(g, new FixGraph(new EventGraph<>(g.unfix().triggering(), List.of())));
-		});
+		var loopEvent = new EventInfo("looop");
+		var withLoop = new FixGraph(new EventGraph<>(loopEvent, List.of(new FixGraph(new EventGraph<>(loopEvent, List.of())))));
+
+		return arbEventPool().flatMap(pool -> Arbitraries.randoms().map(r -> insertAll(withLoop, pool, r)));
 	}
 
-	FixGraph replaceLeaf(FixGraph g, FixGraph leaf) {
-		if(g.unfix().results().isEmpty()) {
-			return new FixGraph(new EventGraph<>(g.unfix().triggering(), List.of(leaf)));
-		} else {
-			return new FixGraph(map(g.unfix(), s -> replaceLeaf(s, leaf)));
+	public static void main(String[] args) {
+		var arb = new ProcessorGraphTest(){
+			@Override
+			public GraphChecker checker() {
+				return null;
+			}
+		}.cyclic();
+
+		for (int i = 0; i < 5; i++) {
+			System.out.println(arb.sample());
 		}
 	}
 
-	// pool of events and names
-	// start with single event
-	// all used events are removed from pool
-	// chose multiple subsets as subtrees
-	// one of pool is always next child event
+	private FixGraph insertAll(FixGraph graph, Pool pool, Random r) {
+		var current = graph;
+		for (var event : pool.events) {
+			current = insert(current, event, r);
+		}
+		return current;
+	}
+
+	private FixGraph insert(FixGraph graph, EventInfo event, Random r) {
+		Algebra<Integer> count = g -> g.results().stream().reduce(0, (a, b) -> a + b) + 1;
+		var anno = cata(graph, attribute(count));
+		var index = r.nextInt(anno.head() + 1) - 1;
+		return AttrGraph.toFix(insert(anno, event, index));
+	}
+
+	private AttrGraph<Integer> insert(AttrGraph<Integer> graph, EventInfo event, int index) {
+		if(index == -1) {
+			return new AttrGraph<>(0, new EventGraph<>(event, List.of(graph)));
+		} else if(index == 0) {
+			var next = new ArrayList<>(graph.tail().results());
+			next.add(new AttrGraph<>(0, new EventGraph<>(event, List.of())));
+			return new AttrGraph<>(0, new EventGraph<>(graph.tail().triggering(), next));
+		} else {
+			index--;
+			var children = graph.tail().results();
+			for (int i = 0; i < children.size(); i++) {
+				var child = children.get(i);
+				if(index < child.head()) {
+					var replaces = insert(child, event, index);
+					var next = new ArrayList<>(children);
+					next.set(i, replaces);
+					return new AttrGraph<>(graph.head(), new EventGraph<>(graph.tail().triggering(), next));
+				} else {
+					index -= child.head();
+				}
+			}
+			throw new IllegalArgumentException("asd");
+		}
+	}
 
 	record Pool(List<EventInfo> events) {}
 
+	Arbitrary<Pool> arbEventPool() {
+		return arbEventInfo().set().map(pool -> new Pool(new ArrayList<>(pool)));
+	}
+
 	@Provide
 	Arbitrary<FixGraph> acyclic() {
-		return arbEventInfo().list().ofMinSize(1).flatMap(pool -> cata(new Pool(pool), this::createAcyclic));
+		return arbEventPool().filter(p -> !p.events.isEmpty()).flatMap(pool -> ana(pool, this::createAcyclic));
 	}
 
 	Arbitrary<EventGraph<Pool>> createAcyclic(Pool pool) {
@@ -80,10 +129,6 @@ public abstract class ProcessorGraphTest {
 		return ag.map(g ->  new EventGraph<>(g.triggering(), g.results().stream().map(f).toList()));
 	}
 
-	<A, B> EventGraph<B> map(EventGraph<A> g, Function<A, B> f) {
-		return new EventGraph<>(g.triggering(), g.results().stream().map(f).toList());
-	}
-
 	<A> Arbitrary<List<A>> sequence(List<Arbitrary<A>> g) {
 		return Combinators.combine(g).as(identity());
 	}
@@ -92,11 +137,11 @@ public abstract class ProcessorGraphTest {
 		return sequence(g.results()).map(l -> new EventGraph(g.triggering(), l));
 	}
 
-	<AA> Arbitrary<FixGraph> cata(AA start, GraphAlgebra<AA> alg) {
-		return map(alg.apply(start), (AA a) -> cata(a, alg)).flatMap(s -> sequence(s)).map(FixGraph::new);
+	<AA> Arbitrary<FixGraph> ana(AA start, ArbGraphCoAlgebra<AA> alg) {
+		return map(alg.apply(start), (AA a) -> ana(a, alg)).flatMap(s -> sequence(s)).map(FixGraph::new);
 	}
 
-	interface GraphAlgebra<A> {
+	interface ArbGraphCoAlgebra<A> {
 		Arbitrary<EventGraph<A>> apply(A a);
 	}
 

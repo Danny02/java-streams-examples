@@ -50,4 +50,14 @@ class GraphTest {
     Graph graph = new Graph(mapping);
     Assertions.assertFalse(graph.containsALoop());
   }
+
+  @Test
+  void acyclicNonConnectedGraphTest2() {
+    Map<String, Set<String>> mapping = new HashMap<>();
+    mapping.put("AAAAA", Set.of("UGQVT"));
+    mapping.put("UGQVT", Set.of("AAAAA"));
+
+    Graph graph = new Graph(mapping);
+    Assertions.assertFalse(graph.containsALoop());
+  }
 }
