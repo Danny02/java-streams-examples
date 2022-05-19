@@ -1,25 +1,26 @@
 package dev.nullzwo.enrich.poc.domain.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.vavr.control.Option;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public record VehicleModel(
 		AgModelCode agModelCode,
-		ConfigurationDates configurationDates
+		ConfigurationDates configurationDates,
+		String series,
+		Option<String> modelRange,
+		String bodyType,
+		String derivative,
+		String steering,
+		//TODO why doubling of order/effect date from timeslice and in configuration dates
+		DateRange orderDate,
+		DateRange effectDate
 //		@JsonProperty("fuelType")
 //		private String fuelType;
-//				@JsonProperty("modelCode")
-//		private String modelCode;
-//		@JsonProperty("agModelCode")
-//		private String agModelCode;
-//		@JsonProperty("steering")
-//		private String steering;
 //		@JsonProperty("series")
 //		private String series;
-//		@JsonProperty("configurationDates")
-//		private ConfigurationDates configurationDates;
 //		@JsonProperty("technicalData")
 //		private TechnicalData technicalData;
 //		@JsonProperty("bodyStyle")
@@ -32,9 +33,5 @@ public record VehicleModel(
 //		private String driveType;
 //		@JsonProperty("hybridFlag")
 //		private String hybridFlag;
-//		@JsonProperty("derivative")
-//		private String derivative;
-//		@JsonProperty("timeslices")
-//		private List<Timeslice> timeslices = new ArrayList<>();
 ) {
 }
